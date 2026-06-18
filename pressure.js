@@ -11,6 +11,10 @@ function formatDate(date) {
     return date.toISOString().split("T")[0];
 }
 
+function hPaToInHg(hPa) {
+    return +(hPa * 0.02953).toFixed(2);
+}
+
 function updateLocationLabel() {
     document.getElementById("currentLocation").innerHTML =
         `<strong>${currentName}</strong><br>
@@ -118,7 +122,7 @@ async function loadData() {
 
         const data = await response.json();
 
-        const pressure = data.hourly.surface_pressure;
+        const pressure = data.hourly.surface_pressure.map(hPaToInHg);
         const times = data.hourly.time;
 
         const change12 = calculateChange(pressure, 12);
@@ -147,7 +151,7 @@ function drawPressureChart(labels, values) {
                 labels,
                 datasets: [
                     {
-                        label: "Pressure (hPa)",
+                        label: "Pressure (inHg)",
                         data: values,
                         pointRadius: 0,
                         borderWidth: 2,
@@ -172,8 +176,8 @@ function drawPressureChart(labels, values) {
                     },
 
                     y: {
-                        min: 970,
-                        max: 1045,
+                        min: 29.00,
+                        max: 30.80,
                         title: {
                             display: true,
                             text: "Pressure"
@@ -224,11 +228,11 @@ function drawChangeChart(labels, values) {
                     },
 
                     y: {
-                        min: -15,
-                        max: 15,
+                        min: -0.50,
+                        max: 0.50,
                         title: {
                             display: true,
-                            text: "Δ hPa"
+                            text: "inHg"
                         }
                     }
                 }
