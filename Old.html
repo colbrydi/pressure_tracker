@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pressure Tracker</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: auto;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        canvas {
+            margin-top: 20px;
+        }
+
+        label {
+            margin-right: 10px;
+        }
+
+        input {
+            width: 100px;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Barometric Pressure Tracker</h1>
+
+<div class="controls">
+    <label>Latitude:</label>
+    <input id="lat" value="42.7325">
+
+    <label>Longitude:</label>
+    <input id="lon" value="-84.5555">
+
+    <button onclick="loadData()">Load</button>
+</div>
+
+<h2>Pressure (hPa)</h2>
+<canvas id="pressureChart"></canvas>
+
+<h2>12-Hour Pressure Change (hPa)</h2>
+<canvas id="changeChart"></canvas>
+
+<script>
+
+let pressureChart = null;
+let changeChart = null;
+
+async function loadData() {
+
+    const lat = document.getElementById('lat').value;
+    const lon = document.getElementById('lon').value;
+
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(endDate.getDate() - 30);
+
+    const formatDate = d => d.toISOString().split('T')[0];
+
+    const url =
+        `https://archive-api.open-meteo.com/v1/archive` +
+        `?latitude=${lat}` +
+        `&longitude=${lon}` +
+        `&start_date=${formatDate(startDate)}` +
+        `&end_date=${formatDate(endDate)}` +
+        `&hourly=surface_pressure`;
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    const times = data.hourly.time;
+    const pressure = data.hourly.surface_pressure;
+
+    const change12 = pressure.map((p, i) => {
+        if (i < 12) return null;
+        return +(p - pressure[i - 12]).toFixed(2);
+    });
+
+    drawPressure(times, pressure);
+    drawChange(times, change12);
+}
+
+function drawPressure(labels, values) {
+
+    if (pressureChart) pressureChart.destroy();
+
+    pressureChart = new Chart(
+        document.getElementById('pressureChart'),
+        {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Pressure (hPa)',
+                    data: values,
+                    borderWidth: 2,
+                    pointRadius: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        ticks: {
+                            maxTicksLimit: 12
+                        }
+                    },
+                    y: {
+                        min: 970,
+                        max: 1045,
+                        title: {
+                            display: true,
+                            text: 'hPa'
+                        }
+                    }
+                }
+            }
+        }
+    );
+}
+
+function drawChange(labels, values) {
+
+    if (changeChart) changeChart.destroy();
+
+    changeChart = new Chart(
+        document.getElementById('changeChart'),
+        {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: '12-Hour Change',
+                    data: values,
+                    borderWidth: 2,
+                    pointRadius: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        ticks: {
+                            maxTicksLimit: 12
+                        }
+                    },
+                    y: {
+                        min: -15,
+                        max: 15,
+                        title: {
+                            display: true,
+                            text: 'Δ hPa'
+                        }
+                    }
+                }
+            }
+        }
+    );
+}
+
+loadData();
+
+</script>
+
+</body>
+</html>
