@@ -176,7 +176,7 @@ function drawPressureChart(labels, values) {
                     },
 
                     y: {
-                        min: 29.00,
+                        min: 28.8,
                         max: 30.80,
                         title: {
                             display: true,
