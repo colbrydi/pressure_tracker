@@ -322,6 +322,7 @@ function drawChangeChart(labels, values) {
 }
 
 window.addEventListener("load", () => {
+    document.body.style.backgroundColor = "#9ef79e";
     updateLocationLabel();
     loadData();
 });
