@@ -22,11 +22,21 @@ function updateLocationLabel() {
 }
 
 function calculateChange(values, hours = 12) {
-    return values.map((value, index) => {
-        if (index < hours) return null;
-        return +(value - values[index - hours]).toFixed(2);
-    });
+
+    const result = [];
+
+    for (let i = 0; i < values.length; i++) {
+
+        if (i < hours) {
+            result.push(0);
+        } else {
+            result.push(values[i] - values[i - hours]);
+        }
+    }
+
+    return result;
 }
+
 
 async function searchLocation() {
 
