@@ -140,14 +140,14 @@ async function loadData() {
         const changeWindow = change12.slice(startIndex);
         const timeWindow = rawTimes.slice(startIndex);
 
-        // ---- CLEAN RISK SIGNAL (LATEST ONLY) ----
+        // ---- CLEAN RISK SIGNAL (LATEST ONLY, WINDOW-CORRECT) ----
 
-        // find the most recent non-null change value
+        // use the SAME window you display
         let latestChange = null;
 
-        for (let i = change12.length - 1; i >= 0; i--) {
-            if (change12[i] !== null && !isNaN(change12[i])) {
-                latestChange = change12[i];
+        for (let i = changeWindow.length - 1; i >= 0; i--) {
+            if (changeWindow[i] !== null && !isNaN(changeWindow[i])) {
+                latestChange = changeWindow[i];
                 break;
             }
         }
@@ -156,7 +156,8 @@ async function loadData() {
             latestChange = 0;
         }
 
-        
+        console.log("LATEST CHANGE (window):", latestChange);
+
         const severity = getSeverity(latestChange);
         setBackground(severity);
 
