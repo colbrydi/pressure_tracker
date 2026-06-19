@@ -163,8 +163,8 @@ function getSeverity(change12h) {
 
     const abs = Math.abs(change12h);
 
-    if (abs < 0.08) return "normal";
-    if (abs < 0.18) return "yellow";
+    if (abs < 0.10) return "normal";
+    if (abs < 0.30) return "yellow";
     return "red";
 }
 
