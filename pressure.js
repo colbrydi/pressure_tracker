@@ -12,7 +12,7 @@ function formatDate(date) {
 }
 
 function hPaToInHg(hPa) {
-    return +(hPa * 0.02953).toFixed(2);
+    return hPa * 0.02953;
 }
 
 function updateLocationLabel() {
@@ -30,16 +30,13 @@ function calculateChange(values, hours = 12) {
 
 async function searchLocation() {
 
-    const location =
-        document.getElementById("location").value.trim();
-
+    const location = document.getElementById("location").value.trim();
     if (!location) return;
 
     const url =
         `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=1`;
 
     try {
-
         const response = await fetch(url);
         const data = await response.json();
 
@@ -54,15 +51,12 @@ async function searchLocation() {
         currentLon = result.longitude;
 
         currentName =
-            `${result.name}${
-                result.admin1 ? ", " + result.admin1 : ""
-            }`;
+            `${result.name}${result.admin1 ? ", " + result.admin1 : ""}`;
 
         updateLocationLabel();
         loadData();
 
     } catch (err) {
-
         console.error(err);
         alert("Unable to find location.");
     }
@@ -71,14 +65,12 @@ async function searchLocation() {
 function useMyLocation() {
 
     if (!navigator.geolocation) {
-
         alert("Geolocation not supported.");
         return;
     }
 
     navigator.geolocation.getCurrentPosition(
-
-        async position => {
+        position => {
 
             currentLat = position.coords.latitude;
             currentLon = position.coords.longitude;
@@ -88,9 +80,7 @@ function useMyLocation() {
             updateLocationLabel();
             loadData();
         },
-
         error => {
-
             console.error(error);
             alert("Unable to determine location.");
         }
@@ -101,7 +91,6 @@ async function loadData() {
 
     const endDate = new Date();
     const startDate = new Date();
-
     startDate.setDate(endDate.getDate() - 30);
 
     const url =
@@ -122,11 +111,19 @@ async function loadData() {
 
         const data = await response.json();
 
-        const pressure = data.hourly.surface_pressure.map(hPaToInHg);
-        const times = data.hourly.time;
+        const pressure = (data.hourly.surface_pressure || [])
+            .map(hPaToInHg);
+
+        const times = data.hourly.time || [];
 
         const change12 = calculateChange(pressure, 12);
-        const latestChange = change12[change12.length - 1];
+
+        // ---- SAFE latest value extraction ----
+        const validChanges = change12.filter(v => v !== null && !isNaN(v));
+        const latestChange = validChanges.length
+            ? validChanges[validChanges.length - 1]
+            : 0;
+
         const severity = getSeverity(latestChange);
 
         setBackground(severity);
@@ -135,7 +132,6 @@ async function loadData() {
         drawChangeChart(times, change12);
 
     } catch (err) {
-
         console.error(err);
         alert("Unable to load pressure data.");
     }
@@ -145,9 +141,9 @@ function getSeverity(change12h) {
 
     const abs = Math.abs(change12h);
 
-    if (abs < 0.10) return "normal";   // stable
-    if (abs < 0.20) return "yellow";   // warning
-    return "red";                      // strong shift
+    if (abs < 0.10) return "normal";
+    if (abs < 0.20) return "yellow";
+    return "red";
 }
 
 function setBackground(severity) {
@@ -155,11 +151,11 @@ function setBackground(severity) {
     let color = "white";
 
     if (severity === "yellow") {
-        color = "#fff3b0"; // soft yellow
+        color = "#fff3b0";
     }
 
     if (severity === "red") {
-        color = "#ffb3b3"; // soft red
+        color = "#ffb3b3";
     }
 
     document.body.style.backgroundColor = color;
@@ -177,15 +173,13 @@ function drawPressureChart(labels, values) {
             type: "line",
             data: {
                 labels,
-                datasets: [
-                    {
-                        label: "Pressure (inHg)",
-                        data: values,
-                        pointRadius: 0,
-                        borderWidth: 2,
-                        tension: 0.15
-                    }
-                ]
+                datasets: [{
+                    label: "Pressure (inHg)",
+                    data: values,
+                    pointRadius: 0,
+                    borderWidth: 2,
+                    tension: 0.15
+                }]
             },
             options: {
                 responsive: true,
@@ -204,11 +198,11 @@ function drawPressureChart(labels, values) {
                     },
 
                     y: {
-                        min: 28.8,
-                        max: 30.80,
+                        min: 28.5,
+                        max: 30.8,
                         title: {
                             display: true,
-                            text: "Pressure"
+                            text: "Pressure (inHg)"
                         }
                     }
                 }
@@ -229,15 +223,13 @@ function drawChangeChart(labels, values) {
             type: "line",
             data: {
                 labels,
-                datasets: [
-                    {
-                        label: "12-Hour Change",
-                        data: values,
-                        pointRadius: 0,
-                        borderWidth: 2,
-                        tension: 0.15
-                    }
-                ]
+                datasets: [{
+                    label: "12-Hour Change",
+                    data: values,
+                    pointRadius: 0,
+                    borderWidth: 2,
+                    tension: 0.15
+                }]
             },
             options: {
                 responsive: true,
@@ -260,7 +252,7 @@ function drawChangeChart(labels, values) {
                         max: 0.50,
                         title: {
                             display: true,
-                            text: "inHg"
+                            text: "Δ inHg"
                         }
                     }
                 }
@@ -270,7 +262,6 @@ function drawChangeChart(labels, values) {
 }
 
 window.addEventListener("load", () => {
-
     updateLocationLabel();
     loadData();
 });

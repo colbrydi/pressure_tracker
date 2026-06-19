@@ -19,6 +19,7 @@
             margin: 0;
             padding: 12px;
             background: #f5f5f5;
+            transition: background 0.3s ease;
         }
 
         .container {
@@ -28,7 +29,7 @@
 
         h1 {
             text-align: center;
-            margin: 8px 0 16px 0;
+            margin: 10px 0 16px;
             font-size: 1.6rem;
         }
 
@@ -75,6 +76,16 @@
             font-size: 0.95rem;
         }
 
+        /* 🔥 NEW: Risk banner */
+        #riskBanner {
+            text-align: center;
+            font-weight: 600;
+            font-size: 1rem;
+            margin-top: 10px;
+            padding: 8px;
+            border-radius: 8px;
+        }
+
         .chart-container {
             position: relative;
             height: 320px;
@@ -85,6 +96,13 @@
             margin-top: 0;
             font-size: 1.1rem;
             text-align: center;
+        }
+
+        footer.card {
+            margin-top: 24px;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            opacity: 0.95;
         }
 
         @media (max-width: 600px) {
@@ -110,6 +128,7 @@
 
     <h1>Barometric Pressure Tracker</h1>
 
+    <!-- LOCATION CARD -->
     <div class="card">
 
         <div class="search-row">
@@ -123,19 +142,19 @@
             </button>
         </div>
 
-        <button
-            class="full-width"
-            onclick="useMyLocation()">
+        <button class="full-width" onclick="useMyLocation()">
             Use My Location
         </button>
 
         <div id="currentLocation"></div>
+        <div id="riskBanner"></div>
 
     </div>
 
+    <!-- PRESSURE CARD -->
     <div class="card">
 
-        <h2>Pressure (hPa)</h2>
+        <h2>Pressure (inHg)</h2>
 
         <div class="chart-container">
             <canvas id="pressureChart"></canvas>
@@ -143,9 +162,10 @@
 
     </div>
 
+    <!-- CHANGE CARD -->
     <div class="card">
 
-        <h2>12-Hour Pressure Change</h2>
+        <h2>12-Hour Pressure Change (inHg)</h2>
 
         <div class="chart-container">
             <canvas id="changeChart"></canvas>
@@ -155,28 +175,27 @@
 
 </div>
 
-<footer class="card" style="margin-top: 24px; font-size: 0.9rem; line-height: 1.4;">
+<!-- FOOTER -->
+<footer class="card">
+
     <h3 style="margin-top: 0;">Data & Tools</h3>
 
     <p>
         <strong>Weather data:</strong>
-        Open-Meteo Archive API (surface pressure)
-        <br>
-        <a href="https://open-meteo.com/">https://open-meteo.com/</a>
+        Open-Meteo Archive API (surface pressure)<br>
+        https://open-meteo.com/
     </p>
 
     <p>
-        <strong>Geocoding (location search):</strong>
-        Open-Meteo Geocoding API
-        <br>
-        <a href="https://open-meteo.com/en/docs/geocoding-api">https://open-meteo.com/en/docs/geocoding-api</a>
+        <strong>Geocoding:</strong>
+        Open-Meteo Geocoding API<br>
+        https://open-meteo.com/en/docs/geocoding-api
     </p>
 
     <p>
-        <strong>Charting library:</strong>
-        Chart.js
-        <br>
-        <a href="https://www.chartjs.org/">https://www.chartjs.org/</a>
+        <strong>Charting:</strong>
+        Chart.js<br>
+        https://www.chartjs.org/
     </p>
 
     <hr style="margin: 12px 0;">
