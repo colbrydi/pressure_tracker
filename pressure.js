@@ -119,12 +119,15 @@ async function loadData() {
         const change12 = calculateChange(pressure, 12);
 
         // ---- SAFE latest value extraction ----
+        const severity = getSeverity(latestChange);
+
         const validChanges = change12.filter(v => v !== null && !isNaN(v));
-        const latestChange = validChanges.length
-            ? validChanges[validChanges.length - 1]
+
+        const maxChange = validChanges.length
+            ? Math.max(...validChanges.map(v => Math.abs(v)))
             : 0;
 
-        const severity = getSeverity(latestChange);
+        const severity = getSeverity(maxChange);
 
         setBackground(severity);
 
