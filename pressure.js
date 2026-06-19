@@ -115,7 +115,7 @@ async function loadData() {
         const rawTimes = data.hourly.time || [];
 
         // keep only last 24 hours (~24 points if hourly data)
-        const WINDOW = 24;
+        const WINDOW = 48;
 
         const startIndex = Math.max(rawPressure.length - WINDOW, 0);
 
