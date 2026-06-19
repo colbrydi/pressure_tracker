@@ -140,14 +140,24 @@ async function loadData() {
         const changeWindow = change12.slice(startIndex);
         const timeWindow = rawTimes.slice(startIndex);
 
-        // ---- RISK SIGNAL (correct windowed version) ----
-        const validChanges = changeWindow.filter(v => v !== null && !isNaN(v));
+        // ---- CLEAN RISK SIGNAL (LATEST ONLY) ----
 
-        const maxChange = validChanges.length
-            ? Math.max(...validChanges.map(v => Math.abs(v)))
-            : 0;
+        // find the most recent non-null change value
+        let latestChange = null;
 
-        const severity = getSeverity(maxChange);
+        for (let i = change12.length - 1; i >= 0; i--) {
+            if (change12[i] !== null && !isNaN(change12[i])) {
+                latestChange = change12[i];
+                break;
+            }
+        }
+
+        if (latestChange === null) {
+            latestChange = 0;
+        }
+
+        
+        const severity = getSeverity(latestChange);
         setBackground(severity);
 
         drawPressureChart(timeWindow, pressureWindow);
