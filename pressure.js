@@ -111,10 +111,19 @@ async function loadData() {
 
         const data = await response.json();
 
-        const pressure = (data.hourly.surface_pressure || [])
+        const rawPressure = data.hourly.surface_pressure || [];
+        const rawTimes = data.hourly.time || [];
+
+        // keep only last 24 hours (~24 points if hourly data)
+        const WINDOW = 24;
+
+        const startIndex = Math.max(rawPressure.length - WINDOW, 0);
+
+        const pressure = rawPressure
+            .slice(startIndex)
             .map(hPaToInHg);
 
-        const times = data.hourly.time || [];
+        const times = rawTimes.slice(startIndex);
 
         const change12 = calculateChange(pressure, 12);
 
@@ -126,7 +135,6 @@ async function loadData() {
             : 0;
 
         const severity = getSeverity(maxChange);
-
         setBackground(severity);
 
         drawPressureChart(times, pressure);
