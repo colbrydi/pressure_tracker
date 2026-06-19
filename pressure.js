@@ -118,9 +118,7 @@ async function loadData() {
 
         const change12 = calculateChange(pressure, 12);
 
-        // ---- SAFE latest value extraction ----
-        const severity = getSeverity(latestChange);
-
+        // ---- CLEAN RISK SIGNAL ----
         const validChanges = change12.filter(v => v !== null && !isNaN(v));
 
         const maxChange = validChanges.length
@@ -144,8 +142,8 @@ function getSeverity(change12h) {
 
     const abs = Math.abs(change12h);
 
-    if (abs < 0.10) return "normal";
-    if (abs < 0.20) return "yellow";
+    if (abs < 0.08) return "normal";
+    if (abs < 0.18) return "yellow";
     return "red";
 }
 
