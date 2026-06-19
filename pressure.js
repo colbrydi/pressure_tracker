@@ -181,7 +181,7 @@ function getSeverity(change12h) {
 
 function setBackground(severity) {
 
-    let color = "green";
+    let color = "#eaf7ea";
 
     if (severity === "yellow") color = "#fff3b0";
     if (severity === "red") color = "#ffb3b3";
