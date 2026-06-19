@@ -126,6 +126,10 @@ async function loadData() {
         const times = data.hourly.time;
 
         const change12 = calculateChange(pressure, 12);
+        const latestChange = change12[change12.length - 1];
+        const severity = getSeverity(latestChange);
+
+        setBackground(severity);
 
         drawPressureChart(times, pressure);
         drawChangeChart(times, change12);
@@ -135,6 +139,30 @@ async function loadData() {
         console.error(err);
         alert("Unable to load pressure data.");
     }
+}
+
+function getSeverity(change12h) {
+
+    const abs = Math.abs(change12h);
+
+    if (abs < 0.10) return "normal";   // stable
+    if (abs < 0.20) return "yellow";   // warning
+    return "red";                      // strong shift
+}
+
+function setBackground(severity) {
+
+    let color = "white";
+
+    if (severity === "yellow") {
+        color = "#fff3b0"; // soft yellow
+    }
+
+    if (severity === "red") {
+        color = "#ffb3b3"; // soft red
+    }
+
+    document.body.style.backgroundColor = color;
 }
 
 function drawPressureChart(labels, values) {
