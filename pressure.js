@@ -3,8 +3,8 @@
 let pressureChart = null;
 let changeChart = null;
 
-let currentLat = 42.7223;
-let currentLon = -84.4275;
+let currentLat = 42.6928;
+let currentLon = -84.4518;
 let currentName = "Okemos, MI";
 
 function formatDate(date) {
