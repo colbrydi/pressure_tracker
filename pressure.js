@@ -3,9 +3,9 @@
 let pressureChart = null;
 let changeChart = null;
 
-let currentLat = 42.7325;
-let currentLon = -84.5555;
-let currentName = "East Lansing, MI";
+let currentLat = 42.7223;
+let currentLon = -84.4275;
+let currentName = "Okemos, MI";
 
 function formatDate(date) {
     return date.toISOString().split("T")[0];
