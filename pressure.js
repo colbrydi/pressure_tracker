@@ -202,7 +202,16 @@ function drawPressureChart(labels, values) {
                 scales: {
                     x: {
                         ticks: {
-                            maxTicksLimit: 8
+                            maxTicksLimit: 6,
+                            callback: function(value, index, ticks) {
+
+                                const label = this.getLabelForValue(value);
+                                const d = new Date(label);
+
+                                const hours = d.getHours().toString().padStart(2, "0");
+
+                                return `${hours}:00`;
+                            }
                         }
                     },
 
@@ -252,7 +261,16 @@ function drawChangeChart(labels, values) {
                 scales: {
                     x: {
                         ticks: {
-                            maxTicksLimit: 8
+                            maxTicksLimit: 6,
+                            callback: function(value, index, ticks) {
+
+                                const label = this.getLabelForValue(value);
+                                const d = new Date(label);
+
+                                const hours = d.getHours().toString().padStart(2, "0");
+
+                                return `${hours}:00`;
+                            }
                         }
                     },
 
