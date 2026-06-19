@@ -21,17 +21,20 @@ function updateLocationLabel() {
          ${currentLat.toFixed(4)}, ${currentLon.toFixed(4)}`;
 }
 
+/**
+ * TRUE 12-hour difference with gaps preserved
+ * (IMPORTANT: null keeps Chart.js from drawing fake values)
+ */
 function calculateChange(values, hours = 12) {
 
     const result = new Array(values.length).fill(null);
 
     for (let i = hours; i < values.length; i++) {
-        result[i] = values[i] - values[i - hours];
+        result[i] = +(values[i] - values[i - hours]).toFixed(4);
     }
 
     return result;
 }
-
 
 async function searchLocation() {
 
@@ -96,7 +99,7 @@ async function loadData() {
 
     const endDate = new Date();
     const startDate = new Date();
-    startDate.setDate(endDate.getDate() - 30);
+    startDate.setDate(endDate.getDate() - 5);
 
     const url =
         `https://archive-api.open-meteo.com/v1/archive` +
@@ -119,21 +122,26 @@ async function loadData() {
         const rawPressure = data.hourly.surface_pressure || [];
         const rawTimes = data.hourly.time || [];
 
-        // keep only last 24 hours (~24 points if hourly data)
-        const WINDOW = 48;
+        // Convert early (clean signal first)
+        const pressure = rawPressure.map(hPaToInHg);
 
-        const startIndex = Math.max(rawPressure.length - WINDOW, 0);
-
-        const pressure = rawPressure
-            .slice(startIndex)
-            .map(hPaToInHg);
-
-        const times = rawTimes.slice(startIndex);
-
+        // Build full change series (aligned)
         const change12 = calculateChange(pressure, 12);
 
-        // ---- CLEAN RISK SIGNAL ----
-        const validChanges = change12.filter(v => v !== null && !isNaN(v));
+        /**
+         * IMPORTANT FIX:
+         * We slice AFTER computing derivative so alignment stays intact
+         */
+        const WINDOW = 48;
+
+        const startIndex = Math.max(pressure.length - WINDOW, 0);
+
+        const pressureWindow = pressure.slice(startIndex);
+        const changeWindow = change12.slice(startIndex);
+        const timeWindow = rawTimes.slice(startIndex);
+
+        // ---- RISK SIGNAL (correct windowed version) ----
+        const validChanges = changeWindow.filter(v => v !== null && !isNaN(v));
 
         const maxChange = validChanges.length
             ? Math.max(...validChanges.map(v => Math.abs(v)))
@@ -142,8 +150,8 @@ async function loadData() {
         const severity = getSeverity(maxChange);
         setBackground(severity);
 
-        drawPressureChart(times, pressure);
-        drawChangeChart(times, change12);
+        drawPressureChart(timeWindow, pressureWindow);
+        drawChangeChart(timeWindow, changeWindow);
 
     } catch (err) {
         console.error(err);
@@ -164,22 +172,15 @@ function setBackground(severity) {
 
     let color = "white";
 
-    if (severity === "yellow") {
-        color = "#fff3b0";
-    }
-
-    if (severity === "red") {
-        color = "#ffb3b3";
-    }
+    if (severity === "yellow") color = "#fff3b0";
+    if (severity === "red") color = "#ffb3b3";
 
     document.body.style.backgroundColor = color;
 }
 
 function drawPressureChart(labels, values) {
 
-    if (pressureChart) {
-        pressureChart.destroy();
-    }
+    if (pressureChart) pressureChart.destroy();
 
     pressureChart = new Chart(
         document.getElementById("pressureChart"),
@@ -192,7 +193,8 @@ function drawPressureChart(labels, values) {
                     data: values,
                     pointRadius: 0,
                     borderWidth: 2,
-                    tension: 0.15
+                    tension: 0.15,
+                    spanGaps: true
                 }]
             },
             options: {
@@ -208,18 +210,12 @@ function drawPressureChart(labels, values) {
                     x: {
                         ticks: {
                             maxTicksLimit: 6,
-                            callback: function(value, index, ticks) {
-
-                                const label = this.getLabelForValue(value);
-                                const d = new Date(label);
-
-                                const hours = d.getHours().toString().padStart(2, "0");
-
-                                return `${hours}:00`;
+                            callback: function(value) {
+                                const d = new Date(this.getLabelForValue(value));
+                                return `${d.getHours().toString().padStart(2, "0")}:00`;
                             }
                         }
                     },
-
                     y: {
                         min: 28.5,
                         max: 30.8,
@@ -236,9 +232,7 @@ function drawPressureChart(labels, values) {
 
 function drawChangeChart(labels, values) {
 
-    if (changeChart) {
-        changeChart.destroy();
-    }
+    if (changeChart) changeChart.destroy();
 
     changeChart = new Chart(
         document.getElementById("changeChart"),
@@ -251,7 +245,8 @@ function drawChangeChart(labels, values) {
                     data: values,
                     pointRadius: 0,
                     borderWidth: 2,
-                    tension: 0.15
+                    tension: 0.15,
+                    spanGaps: true
                 }]
             },
             options: {
@@ -267,18 +262,12 @@ function drawChangeChart(labels, values) {
                     x: {
                         ticks: {
                             maxTicksLimit: 6,
-                            callback: function(value, index, ticks) {
-
-                                const label = this.getLabelForValue(value);
-                                const d = new Date(label);
-
-                                const hours = d.getHours().toString().padStart(2, "0");
-
-                                return `${hours}:00`;
+                            callback: function(value) {
+                                const d = new Date(this.getLabelForValue(value));
+                                return `${d.getHours().toString().padStart(2, "0")}:00`;
                             }
                         }
                     },
-
                     y: {
                         min: -0.50,
                         max: 0.50,
