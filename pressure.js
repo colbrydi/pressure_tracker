@@ -242,7 +242,20 @@ function drawPressureChart(labels, values) {
 
 function drawChangeChart(labels, values) {
 
-    if (changeChart) changeChart.destroy();
+    if (changeChart) {
+        changeChart.destroy();
+    }
+
+    const pointColors = values.map(v => {
+
+        if (v === null || isNaN(v)) return "rgba(0,0,0,0)";
+
+        const abs = Math.abs(v);
+
+        if (abs >= 0.3) return "#d9534f";   // red
+        if (abs >= 0.1) return "#f0ad4e";   // yellow
+        return "#5cb85c";                  // green
+    });
 
     changeChart = new Chart(
         document.getElementById("changeChart"),
@@ -250,14 +263,29 @@ function drawChangeChart(labels, values) {
             type: "line",
             data: {
                 labels,
-                datasets: [{
-                    label: "12-Hour Change",
-                    data: values,
-                    pointRadius: 0,
-                    borderWidth: 2,
-                    tension: 0.15,
-                    spanGaps: true
-                }]
+                datasets: [
+
+                    // 1. main line (neutral)
+                    {
+                        label: "12-Hour Change",
+                        data: values,
+                        pointRadius: 0,
+                        borderWidth: 2,
+                        tension: 0.15,
+                        spanGaps: true
+                    },
+
+                    // 2. colored risk dots (THIS is the key)
+                    {
+                        label: "Risk Level",
+                        data: values,
+                        showLine: false,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        backgroundColor: pointColors,
+                        borderWidth: 0
+                    }
+                ]
             },
             options: {
                 responsive: true,
@@ -279,8 +307,8 @@ function drawChangeChart(labels, values) {
                         }
                     },
                     y: {
-                        min: -0.50,
-                        max: 0.50,
+                        min: -0.5,
+                        max: 0.5,
                         title: {
                             display: true,
                             text: "Δ inHg"
