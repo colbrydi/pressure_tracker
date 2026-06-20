@@ -135,6 +135,16 @@ async function loadData() {
             rawTimes[rawTimes.length - 1]
         );
 
+        console.log("rawPressure length:", rawPressure.length);
+        console.log("first pressure:", rawPressure[0]);
+        console.log("last pressure:", rawPressure[rawPressure.length - 1]);
+
+        console.log("pressure sample:",
+            rawPressure.slice(0,5));
+
+        console.log("time sample:",
+            rawTimes.slice(0,5));
+
         // Convert early (clean signal first)
         const pressure = rawPressure.map(hPaToInHg);
 
