@@ -165,8 +165,9 @@ async function loadData() {
         const timeWindow = rawTimes.slice(startIndex);
 
         const latestTime = timeWindow[timeWindow.length - 1];
-        //document.getElementById("lastUpdated").textContent = `Latest data: ${latestTime}`;
-
+        if (el) {
+            el.textContent = `Latest data: ${latestTime}`;
+        }
 
         // ---- CLEAN RISK SIGNAL (LATEST ONLY, WINDOW-CORRECT) ----
 
