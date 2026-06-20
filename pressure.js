@@ -107,7 +107,7 @@ async function loadData() {
         `https://api.open-meteo.com/v1/forecast` +
         `?latitude=${currentLat}` +
         `&longitude=${currentLon}` +
-        `&hourly=surface_pressure` +
+        `&hourly=pressure_msl` +
         `&past_days=5` +
         `&forecast_days=1`;
 
@@ -124,7 +124,7 @@ async function loadData() {
         const data = await response.json();
         console.log("data received:", data);
 
-        const rawPressure = data.hourly.surface_pressure || [];
+        const rawPressure = data.hourly.surface_msl || [];
         const rawTimes = data.hourly.time || [];
         
         console.log("latest timestamp:", rawTimes[rawTimes.length - 1]);
