@@ -122,6 +122,7 @@ async function loadData() {
         }
 
         const data = await response.json();
+        console.log("hourly keys:", Object.keys(data.hourly));
         console.log("data received:", data);
 
         const rawPressure = data.hourly.surface_msl || [];
