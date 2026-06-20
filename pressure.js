@@ -151,8 +151,7 @@ async function loadData() {
         // Build full change series (aligned)
         const change12 = calculateChange(pressure, 12);
 
-        const latestTime = timeWindow[timeWindow.length - 1];
-        document.getElementById("lastUpdated").textContent = `Latest data: ${latestTime}`;
+       
         /**
          * IMPORTANT FIX:
          * We slice AFTER computing derivative so alignment stays intact
@@ -165,6 +164,8 @@ async function loadData() {
         const changeWindow = change12.slice(startIndex);
         const timeWindow = rawTimes.slice(startIndex);
 
+        const latestTime = timeWindow[timeWindow.length - 1];
+        document.getElementById("lastUpdated").textContent = `Latest data: ${latestTime}`;
         // ---- CLEAN RISK SIGNAL (LATEST ONLY, WINDOW-CORRECT) ----
 
         // use the SAME window you display
