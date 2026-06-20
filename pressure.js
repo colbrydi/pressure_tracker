@@ -166,6 +166,8 @@ async function loadData() {
 
         const latestTime = timeWindow[timeWindow.length - 1];
         document.getElementById("lastUpdated").textContent = `Latest data: ${latestTime}`;
+
+        
         // ---- CLEAN RISK SIGNAL (LATEST ONLY, WINDOW-CORRECT) ----
 
         // use the SAME window you display
