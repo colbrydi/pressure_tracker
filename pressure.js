@@ -103,7 +103,7 @@ async function loadData() {
     const startDate = new Date();
     startDate.setDate(endDate.getDate() - 5);
 
-    cconst url =
+    const url =
         `https://api.open-meteo.com/v1/forecast` +
         `?latitude=${currentLat}` +
         `&longitude=${currentLon}` +
