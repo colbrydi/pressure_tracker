@@ -125,7 +125,7 @@ async function loadData() {
         console.log("hourly keys:", Object.keys(data.hourly));
         console.log("data received:", data);
 
-        const rawPressure = data.hourly.surface_msl || [];
+        const rawPressure = data.hourly.pressure_msl || [];
         const rawTimes = data.hourly.time || [];
         
         console.log("latest timestamp:", rawTimes[rawTimes.length - 1]);
