@@ -101,13 +101,13 @@ async function loadData() {
     const startDate = new Date();
     startDate.setDate(endDate.getDate() - 5);
 
-    cconst url =
-        `https://api.open-meteo.com/v1/forecast` +
+    const url =
+        `https://archive-api.open-meteo.com/v1/archive` +
         `?latitude=${currentLat}` +
         `&longitude=${currentLon}` +
-        `&hourly=surface_pressure` +
-        `&past_days=5` +
-        `&forecast_days=1`;
+        `&start_date=${formatDate(startDate)}` +
+        `&end_date=${formatDate(endDate)}` +
+        `&hourly=surface_pressure`;
 
     try {
 
@@ -121,11 +121,6 @@ async function loadData() {
 
         const rawPressure = data.hourly.surface_pressure || [];
         const rawTimes = data.hourly.time || [];
-
-        console.log(
-            "Newest data point:",
-            rawTimes[rawTimes.length - 1]
-        );
 
         // Convert early (clean signal first)
         const pressure = rawPressure.map(hPaToInHg);
