@@ -151,6 +151,9 @@ async function loadData() {
         // Build full change series (aligned)
         const change12 = calculateChange(pressure, 12);
 
+        const latestTime = timeWindow[timeWindow.length - 1];
+        document.getElementById("lastUpdated").textContent =
+            `Latest data: ${latestTime}`;
         /**
          * IMPORTANT FIX:
          * We slice AFTER computing derivative so alignment stays intact
