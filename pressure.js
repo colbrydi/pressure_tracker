@@ -7,6 +7,8 @@ let currentLat = 42.6928;
 let currentLon = -84.4518;
 let currentName = "Okemos, MI";
 
+console.log("PRESSURE.JS LOADED");
+
 function formatDate(date) {
     return date.toISOString().split("T")[0];
 }
@@ -111,16 +113,21 @@ async function loadData() {
 
     try {
 
+        console.log("loadData started");
         const response = await fetch(url);
+        console.log("response status:", response.status);
 
         if (!response.ok) {
             throw new Error(response.statusText);
         }
 
         const data = await response.json();
+        console.log("data received:", data);
 
         const rawPressure = data.hourly.surface_pressure || [];
         const rawTimes = data.hourly.time || [];
+        
+        console.log("latest timestamp:", rawTimes[rawTimes.length - 1]);
 
         console.log(
             "Newest data point:",
