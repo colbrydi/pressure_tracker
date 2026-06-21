@@ -166,9 +166,9 @@ async function loadData() {
 
         const el = document.getElementById("lastUpdated");
         const latestTime = timeWindow[timeWindow.length - 1];
-        if (el) {
-            el.textContent = `Latest data: ${latestTime}`;
-        }
+        //if (el) {
+        //    el.textContent = `Latest data: ${latestTime}`;
+        //}
 
         // ---- CLEAN RISK SIGNAL (LATEST ONLY, WINDOW-CORRECT) ----
 
