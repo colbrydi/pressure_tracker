@@ -164,6 +164,7 @@ async function loadData() {
         const changeWindow = change12.slice(startIndex);
         const timeWindow = rawTimes.slice(startIndex);
 
+        const el = document.getElementById("lastUpdated");
         const latestTime = timeWindow[timeWindow.length - 1];
         if (el) {
             el.textContent = `Latest data: ${latestTime}`;
