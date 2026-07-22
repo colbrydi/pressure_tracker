@@ -53,6 +53,43 @@
             font-size: 16px;
         }
 
+        .delta-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+
+        .delta-row label {
+            white-space: nowrap;
+            color: #555;
+        }
+
+        .delta-row input[type="range"] {
+            flex: 1;
+            min-width: 0;
+        }
+
+        #deltaLabel {
+            min-width: 3.5em;
+            font-weight: 600;
+            text-align: right;
+        }
+
+        .delta-row h2 {
+            margin: 0 0 8px;
+            font-size: 1.1rem;
+            text-align: center;
+            width: 100%;
+        }
+
+        .delta-controls {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 8px;
+        }
+
         button {
             padding: 12px;
             font-size: 16px;
@@ -135,7 +172,7 @@
             <input
                 id="location"
                 type="text"
-                placeholder="Okemos"
+                placeholder="City, State or postal code"
                 value="Okemos">
             <button onclick="searchLocation()">
                 Search
@@ -154,7 +191,30 @@
     <!-- CHANGE CARD -->
     <div class="card">
 
-        <h2>12-Hour Pressure Change (inHg)</h2>
+        <div class="delta-controls">
+            <h2 id="changeTitle">12-Hour Pressure Change (inHg)</h2>
+            <div class="delta-row">
+                <label for="deltaHours">Window</label>
+                <input
+                    type="range"
+                    id="deltaHours"
+                    min="2"
+                    max="12"
+                    step="2"
+                    value="12"
+                    list="deltaTicks"
+                    oninput="onDeltaChange()">
+                <datalist id="deltaTicks">
+                    <option value="2" label="2h"></option>
+                    <option value="4" label="4h"></option>
+                    <option value="6" label="6h"></option>
+                    <option value="8" label="8h"></option>
+                    <option value="10" label="10h"></option>
+                    <option value="12" label="12h"></option>
+                </datalist>
+                <span id="deltaLabel">12 hr</span>
+            </div>
+        </div>
         <div id="lastUpdated" style="text-align:center; font-size:0.9rem; margin-bottom:8px;"></div>
         <div class="chart-container">
             <canvas id="changeChart"></canvas>
@@ -182,7 +242,7 @@
 
     <p>
         <strong>Weather data:</strong>
-        Open-Meteo Archive API (surface pressure)<br>
+        Open-Meteo Forecast API (mean sea level pressure)<br>
         <a href="https://open-meteo.com/">https://open-meteo.com/</a>
     </p>
 
