@@ -15,6 +15,95 @@ function hPaToInHg(hPa) {
     return hPa * 0.02953;
 }
 
+function formatReadingTime(isoString) {
+    const d = new Date(isoString);
+    return d.toLocaleString(undefined, {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit"
+    });
+}
+
+function formatAxisTick(isoString) {
+    const d = new Date(isoString);
+    const day = d.toLocaleDateString(undefined, { weekday: "short", month: "numeric", day: "numeric" });
+    const time = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+    return `${day} ${time}`;
+}
+
+function formatRangeSubtitle(startIso, endIso) {
+    return `${formatReadingTime(startIso)} → ${formatReadingTime(endIso)}`;
+}
+
+function getLatestObservedTime(times) {
+    const now = Date.now();
+    for (let i = times.length - 1; i >= 0; i--) {
+        if (new Date(times[i]).getTime() <= now) {
+            return times[i];
+        }
+    }
+    return times[times.length - 1];
+}
+
+function getDataFreshness(latestIso) {
+    const ageHours = (Date.now() - new Date(latestIso).getTime()) / 3600000;
+
+    if (ageHours > 6) {
+        return {
+            level: "very-stale",
+            text: `⚠ Data is ${Math.round(ageHours)} hours old — last reading ${formatReadingTime(latestIso)}`
+        };
+    }
+    if (ageHours > 2) {
+        return {
+            level: "stale",
+            text: `Last reading ${formatReadingTime(latestIso)} (${Math.round(ageHours * 10) / 10}h ago)`
+        };
+    }
+    return {
+        level: "fresh",
+        text: `Latest reading: ${formatReadingTime(latestIso)}`
+    };
+}
+
+function buildChartOptions(yScale) {
+    return {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+            mode: "index",
+            intersect: false
+        },
+        plugins: {
+            tooltip: {
+                callbacks: {
+                    title: items => formatReadingTime(items[0].label)
+                }
+            }
+        },
+        scales: {
+            x: {
+                title: {
+                    display: true,
+                    text: "Local time"
+                },
+                ticks: {
+                    maxTicksLimit: 8,
+                    maxRotation: 45,
+                    minRotation: 0,
+                    autoSkip: true,
+                    callback: function(value) {
+                        return formatAxisTick(this.getLabelForValue(value));
+                    }
+                }
+            },
+            y: yScale
+        }
+    };
+}
+
 function updateLocationLabel() {
     document.getElementById("currentLocation").innerHTML =
         `<strong>${currentName}</strong><br>
@@ -226,8 +315,6 @@ async function loadData() {
 function onDeltaChange() {
     currentDeltaHours = parseInt(document.getElementById("deltaHours").value, 10);
     document.getElementById("deltaLabel").textContent = `${currentDeltaHours} hr`;
-    document.getElementById("changeTitle").textContent =
-        `${currentDeltaHours}-Hour Pressure Change (inHg)`;
     if (cachedPressure) renderCharts();
 }
 
@@ -262,8 +349,31 @@ function renderCharts() {
     const severity = getSeverity(latestChange, hours);
     setBackground(severity);
 
+    updateTimeLabels(timeWindow, hours);
+
     drawPressureChart(timeWindow, pressureWindow);
     drawChangeChart(timeWindow, changeWindow, hours);
+}
+
+function updateTimeLabels(timeWindow, hours) {
+
+    const latestIso = getLatestObservedTime(timeWindow);
+    const startIso = timeWindow[0];
+    const freshness = getDataFreshness(latestIso);
+    const rangeText = formatRangeSubtitle(startIso, latestIso);
+
+    document.getElementById("changeTitle").textContent =
+        `${hours}-Hour Pressure Change (inHg)`;
+    document.getElementById("changeSubtitle").textContent =
+        `Latest: ${formatReadingTime(latestIso)} · Showing last 48 hours`;
+
+    document.getElementById("pressureTitle").textContent = "Pressure (inHg)";
+    document.getElementById("pressureSubtitle").textContent =
+        `Latest: ${formatReadingTime(latestIso)} · ${rangeText}`;
+
+    const el = document.getElementById("lastUpdated");
+    el.textContent = freshness.text;
+    el.className = freshness.level === "fresh" ? "" : freshness.level;
 }
 
 function getSeverity(change, hours = 12) {
@@ -310,35 +420,14 @@ function drawPressureChart(labels, values) {
                     spanGaps: true
                 }]
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-
-                interaction: {
-                    mode: "index",
-                    intersect: false
-                },
-
-                scales: {
-                    x: {
-                        ticks: {
-                            maxTicksLimit: 6,
-                            callback: function(value) {
-                                const d = new Date(this.getLabelForValue(value));
-                                return `${d.getHours().toString().padStart(2, "0")}:00`;
-                            }
-                        }
-                    },
-                    y: {
-                        min: 28.5,
-                        max: 30.8,
-                        title: {
-                            display: true,
-                            text: "Pressure (inHg)"
-                        }
-                    }
+            options: buildChartOptions({
+                min: 28.5,
+                max: 30.8,
+                title: {
+                    display: true,
+                    text: "Pressure (inHg)"
                 }
-            }
+            })
         }
     );
 }
@@ -390,35 +479,14 @@ function drawChangeChart(labels, values, hours = 12) {
                     }
                 ]
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-
-                interaction: {
-                    mode: "index",
-                    intersect: false
-                },
-
-                scales: {
-                    x: {
-                        ticks: {
-                            maxTicksLimit: 6,
-                            callback: function(value) {
-                                const d = new Date(this.getLabelForValue(value));
-                                return `${d.getHours().toString().padStart(2, "0")}:00`;
-                            }
-                        }
-                    },
-                    y: {
-                        min: -0.5,
-                        max: 0.5,
-                        title: {
-                            display: true,
-                            text: "Δ inHg"
-                        }
-                    }
+            options: buildChartOptions({
+                min: -0.5,
+                max: 0.5,
+                title: {
+                    display: true,
+                    text: "Δ inHg"
                 }
-            }
+            })
         }
     );
 }
