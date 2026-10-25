@@ -6,7 +6,7 @@
     <title>Pressure Tracker</title>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script defer src="pressure.js"></script>
+    <script defer src="pressure_beta.js"></script>
 
     <style>
         * {
@@ -113,6 +113,18 @@
             font-size: 0.95rem;
         }
 
+        #locationResults {
+            display: grid;
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .location-result {
+            padding: 8px;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
         /* 🔥 NEW: Risk banner */
         #riskBanner {
             text-align: center;
@@ -190,17 +202,17 @@
             <input
                 id="location"
                 type="text"
-                placeholder="City, State or postal code"
-                value="Okemos">
-            <button onclick="searchLocation()">
+                placeholder="City, State or postal code">
+            <button onclick="searchLocationBeta()">
                 Search
             </button>
         </div>
 
-        <button class="full-width" onclick="useMyLocation()">
+        <button class="full-width" onclick="useMyLocationBeta()">
             Use My Location
         </button>
 
+        <div id="locationResults" aria-label="Location search results"></div>
         <div id="currentLocation"></div>
         <div id="riskBanner"></div>
 
@@ -210,7 +222,7 @@
     <div class="card">
 
         <div class="delta-controls">
-            <h2 id="changeTitle">12-Hour Pressure Change (inHg)</h2>
+            <h2 id="changeTitle">24-Hour Pressure Change (inHg)</h2>
             <div id="changeSubtitle" class="chart-subtitle"></div>
             <div class="delta-row">
                 <label for="deltaHours">Window</label>
@@ -218,9 +230,9 @@
                     type="range"
                     id="deltaHours"
                     min="2"
-                    max="12"
+                    max="24"
                     step="2"
-                    value="12"
+                    value="24"
                     list="deltaTicks"
                     oninput="onDeltaChange()">
                 <datalist id="deltaTicks">
@@ -230,8 +242,14 @@
                     <option value="8" label="8h"></option>
                     <option value="10" label="10h"></option>
                     <option value="12" label="12h"></option>
+                    <option value="14" label="14h"></option>
+                    <option value="16" label="16h"></option>
+                    <option value="18" label="18h"></option>
+                    <option value="20" label="20h"></option>
+                    <option value="22" label="22h"></option>
+                    <option value="24" label="24h"></option>
                 </datalist>
-                <span id="deltaLabel">12 hr</span>
+                <span id="deltaLabel">24 hr</span>
             </div>
         </div>
         <div id="lastUpdated"></div>
@@ -281,7 +299,7 @@
 
     <p style="font-style: italic;">
         Built as a lightweight migraine-weather tracker for visualizing barometric pressure changes.
-        Assisted in design and implementation with ChatGPT (OpenAI).
+        Assisted in design and implementation with ChatGPT (OpenAI) and GitHub Copilot.
     </p>
 </footer>
 

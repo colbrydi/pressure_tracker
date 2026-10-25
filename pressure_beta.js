@@ -391,6 +391,7 @@ async function searchLocationBeta() {
 
 function useMyLocationBeta() {
     clearLocationResultsBeta();
+    document.getElementById("location").value = "";
     useMyLocation();
 }
 
@@ -658,6 +659,18 @@ function formatReadingTimeBeta(time) {
     });
 }
 
+function formatLocationReadingTimeBeta(time) {
+    return parseApiTimeBeta(time).toLocaleString(undefined, {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        timeZone: currentTimeZone,
+        timeZoneName: "short"
+    });
+}
+
 function formatAxisTickBeta(time) {
     const d = parseApiTimeBeta(time);
     const options = { timeZone: currentTimeZone };
@@ -684,22 +697,23 @@ function getLatestObservedIndexBeta(times) {
 
 function getDataFreshnessBeta(latestIso) {
     const ageHours = (Date.now() - parseApiTimeBeta(latestIso).getTime()) / 3600000;
+    const latestReading = `Latest observed pressure (location time): ${formatLocationReadingTimeBeta(latestIso)}`;
 
     if (ageHours > 6) {
         return {
             level: "very-stale",
-            text: `⚠ Data is ${Math.round(ageHours)} hours old — last reading ${formatReadingTimeBeta(latestIso)}`
+            text: `⚠ ${latestReading} — ${Math.round(ageHours)}h ago`
         };
     }
     if (ageHours > 2) {
         return {
             level: "stale",
-            text: `Last reading ${formatReadingTimeBeta(latestIso)} (${Math.round(ageHours * 10) / 10}h ago)`
+            text: `${latestReading} — ${Math.round(ageHours * 10) / 10}h ago`
         };
     }
     return {
         level: "fresh",
-        text: `Latest reading: ${formatReadingTimeBeta(latestIso)}`
+        text: latestReading
     };
 }
 
@@ -962,6 +976,7 @@ function renderChartsBeta() {
 
 window.addEventListener("load", () => {
     document.body.style.backgroundColor = "#9ef79e";
+    document.getElementById("location").value = "";
     updateLocationLabel();
 
     document.getElementById("location").addEventListener("keydown", e => {
