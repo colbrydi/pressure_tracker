@@ -6,13 +6,23 @@ let changeChart = null;
 let currentLat = 42.6928;
 let currentLon = -84.4518;
 let currentName = "Okemos, MI";
-let currentDeltaHours = 12;
+let currentDeltaHours = 24;
 
 let cachedPressure = null;
 let cachedTimes = null;
+let currentTimeZone = null;
+
+const dataWindowHoursBeta = 48;
+const currentWindowHoursBeta = dataWindowHoursBeta / 2;
+const resampleIntervalMinutesBeta = 60;
+const maxInterpolationGapMinutesBeta = 90;
 
 function hPaToInHg(hPa) {
     return hPa * 0.02953;
+}
+
+function hPaToInHgBeta(hPa) {
+    return hPa == null || Number.isNaN(hPa) ? null : hPaToInHg(hPa);
 }
 
 function formatReadingTime(isoString) {
@@ -253,6 +263,138 @@ async function geocodeSearch(name) {
     return response.json();
 }
 
+function getUsStateNameBeta(query) {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    if (US_STATE_ABBR[normalizedQuery]) {
+        return US_STATE_ABBR[normalizedQuery];
+    }
+
+    return Object.values(US_STATE_ABBR).includes(normalizedQuery) ? normalizedQuery : null;
+}
+
+async function geocodeSearchBeta(name, countryCode = "") {
+    const url =
+        `https://geocoding-api.open-meteo.com/v1/search` +
+        `?name=${encodeURIComponent(name)}` +
+        `&count=10&language=en` +
+        (countryCode ? `&countryCode=${encodeURIComponent(countryCode)}` : "");
+    const response = await fetch(url);
+
+    if (!response.ok) {
+        throw new Error(response.statusText);
+    }
+
+    return response.json();
+}
+
+function getLocationResultScoreBeta(query, result) {
+    const parts = query.split(",").map(part => part.trim()).filter(Boolean);
+    const cityHint = parts[0].toLowerCase();
+    const stateHint = parts.length > 1 ? parts[parts.length - 1].toLowerCase() : "";
+    const stateFull = stateHint.length === 2 ? (US_STATE_ABBR[stateHint] || "") : stateHint;
+    const stateNameQuery = Boolean(getUsStateNameBeta(cityHint));
+    const name = (result.name || "").toLowerCase();
+    const admin1 = (result.admin1 || "").toLowerCase();
+    const countryCode = (result.country_code || "").toLowerCase();
+    let score = 0;
+
+    if (name === cityHint) score += 3;
+    else if (name.startsWith(cityHint)) score += 2;
+
+    if (stateNameQuery && admin1 === cityHint) score += 10;
+
+    if (stateHint) {
+        if (stateFull && admin1 === stateFull) score += 5;
+        else if (admin1 === stateHint || admin1.startsWith(stateHint)) score += 4;
+        else if (countryCode === stateHint) score += 3;
+    }
+
+    if (stateNameQuery && countryCode === "us") score += 3;
+
+    if (result.feature_code === "PPL" || result.feature_code === "PPLA" || result.feature_code === "PPLC") {
+        score += 2;
+    }
+
+    if (result.population) score += Math.log10(result.population);
+
+    return score;
+}
+
+function getLocationResultLabelBeta(result) {
+    return [result.name, result.admin1, result.country].filter(Boolean).join(", ");
+}
+
+function clearLocationResultsBeta() {
+    document.getElementById("locationResults").replaceChildren();
+}
+
+function selectLocationResultBeta(result) {
+    currentLat = result.latitude;
+    currentLon = result.longitude;
+    currentName = formatLocationName(result);
+
+    document.getElementById("location").value = currentName;
+    clearLocationResultsBeta();
+    updateLocationLabel();
+    loadData();
+}
+
+function renderLocationResultsBeta(query, results) {
+    const container = document.getElementById("locationResults");
+    const rankedResults = [...results]
+        .sort((a, b) => getLocationResultScoreBeta(query, b) - getLocationResultScoreBeta(query, a))
+        .slice(0, 5);
+
+    container.replaceChildren(...rankedResults.map(result => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "location-result";
+        button.textContent = getLocationResultLabelBeta(result);
+        button.addEventListener("click", () => selectLocationResultBeta(result));
+        return button;
+    }));
+}
+
+async function searchLocationBeta() {
+    const location = document.getElementById("location").value.trim();
+    if (!location) return;
+
+    try {
+        const stateName = getUsStateNameBeta(location);
+        let data = await geocodeSearchBeta(location, stateName ? "US" : "");
+
+        if (!data.results || data.results.length === 0) {
+            const cityPart = location.split(",")[0].trim();
+            if (cityPart && cityPart !== location) {
+                data = await geocodeSearchBeta(cityPart);
+            }
+        }
+
+        if (!data.results || data.results.length === 0) {
+            clearLocationResultsBeta();
+            alert("Location not found. Try a city name, \"City, State\", or postal code.");
+            return;
+        }
+
+        if (data.results.length === 1) {
+            selectLocationResultBeta(data.results[0]);
+            return;
+        }
+
+        renderLocationResultsBeta(location, data.results);
+    } catch (err) {
+        console.error(err);
+        alert("Unable to find location.");
+    }
+}
+
+function useMyLocationBeta() {
+    clearLocationResultsBeta();
+    document.getElementById("location").value = "";
+    useMyLocation();
+}
+
 function useMyLocation() {
 
     if (!navigator.geolocation) {
@@ -285,8 +427,10 @@ async function loadData() {
         `?latitude=${currentLat}` +
         `&longitude=${currentLon}` +
         `&hourly=pressure_msl` +
-        `&past_days=5` +
-        `&forecast_days=1`;
+        `&past_hours=${dataWindowHoursBeta}` +
+        `&forecast_hours=0` +
+        `&timezone=auto` +
+        `&timeformat=unixtime`;
 
     try {
 
@@ -301,10 +445,15 @@ async function loadData() {
         const rawPressure = data.hourly.pressure_msl || [];
         const rawTimes = data.hourly.time || [];
 
-        cachedPressure = rawPressure.map(hPaToInHg);
-        cachedTimes = rawTimes;
+        if (!data.timezone) {
+            throw new Error("The weather service did not return a time zone for this location.");
+        }
 
-        renderCharts();
+        cachedPressure = rawPressure.map(hPaToInHgBeta);
+        cachedTimes = rawTimes;
+        currentTimeZone = data.timezone;
+
+        renderChartsBeta();
 
     } catch (err) {
         console.error(err);
@@ -315,7 +464,7 @@ async function loadData() {
 function onDeltaChange() {
     currentDeltaHours = parseInt(document.getElementById("deltaHours").value, 10);
     document.getElementById("deltaLabel").textContent = `${currentDeltaHours} hr`;
-    if (cachedPressure) renderCharts();
+    if (cachedPressure) renderChartsBeta();
 }
 
 function renderCharts() {
@@ -491,12 +640,347 @@ function drawChangeChart(labels, values, hours = 12) {
     );
 }
 
+function parseApiTimeBeta(time) {
+    if (typeof time === "number" || (typeof time === "string" && /^\d+(?:\.\d+)?$/.test(time))) {
+        return new Date(Number(time) * 1000);
+    }
+
+    return new Date(`${time}Z`);
+}
+
+function formatReadingTimeBeta(time) {
+    return parseApiTimeBeta(time).toLocaleString(undefined, {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        timeZone: currentTimeZone
+    });
+}
+
+function formatLocationReadingTimeBeta(time) {
+    return parseApiTimeBeta(time).toLocaleString(undefined, {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        timeZone: currentTimeZone,
+        timeZoneName: "short"
+    });
+}
+
+function formatAxisTickBeta(time) {
+    const d = parseApiTimeBeta(time);
+    const options = { timeZone: currentTimeZone };
+    const day = d.toLocaleDateString(undefined, { weekday: "short", month: "numeric", day: "numeric", ...options });
+    const timeLabel = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", ...options });
+    return `${day} ${timeLabel}`;
+}
+
+function formatRangeSubtitleBeta(startIso, endIso) {
+    return `${formatReadingTimeBeta(startIso)} → ${formatReadingTimeBeta(endIso)}`;
+}
+
+function getLatestObservedIndexBeta(times) {
+    const now = Date.now();
+
+    for (let i = times.length - 1; i >= 0; i--) {
+        if (parseApiTimeBeta(times[i]).getTime() <= now) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+function getDataFreshnessBeta(latestIso) {
+    const ageHours = (Date.now() - parseApiTimeBeta(latestIso).getTime()) / 3600000;
+    const latestReading = `Latest observed pressure (location time): ${formatLocationReadingTimeBeta(latestIso)}`;
+
+    if (ageHours > 6) {
+        return {
+            level: "very-stale",
+            text: `⚠ ${latestReading} — ${Math.round(ageHours)}h ago`
+        };
+    }
+    if (ageHours > 2) {
+        return {
+            level: "stale",
+            text: `${latestReading} — ${Math.round(ageHours * 10) / 10}h ago`
+        };
+    }
+    return {
+        level: "fresh",
+        text: latestReading
+    };
+}
+
+function buildChartOptionsBeta(yScale) {
+    return {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+            mode: "index",
+            intersect: false
+        },
+        plugins: {
+            tooltip: {
+                callbacks: {
+                    title: items => formatReadingTimeBeta(items[0].label)
+                }
+            }
+        },
+        scales: {
+            x: {
+                title: {
+                    display: true,
+                    text: `Location time (${currentTimeZone})`
+                },
+                ticks: {
+                    maxTicksLimit: 8,
+                    maxRotation: 45,
+                    minRotation: 0,
+                    autoSkip: true,
+                    callback: function(value) {
+                        return formatAxisTickBeta(this.getLabelForValue(value));
+                    }
+                }
+            },
+            y: yScale
+        }
+    };
+}
+
+function updateTimeLabelsBeta(pressureTimes, changeTimes, hours) {
+    const latestIso = pressureTimes[pressureTimes.length - 1];
+    const startIso = pressureTimes[0];
+    const freshness = getDataFreshnessBeta(latestIso);
+    const rangeText = formatRangeSubtitleBeta(startIso, latestIso);
+
+    document.getElementById("changeTitle").textContent =
+        `${hours}-Hour Pressure Change (inHg)`;
+    document.getElementById("changeSubtitle").textContent =
+        `Comparing the latest ${currentWindowHoursBeta} hours · Latest: ${formatReadingTimeBeta(changeTimes[changeTimes.length - 1])}`;
+
+    document.getElementById("pressureTitle").textContent = "Pressure (inHg)";
+    document.getElementById("pressureSubtitle").textContent =
+        `Latest: ${formatReadingTimeBeta(latestIso)} · ${rangeText}`;
+
+    const el = document.getElementById("lastUpdated");
+    el.textContent = freshness.text;
+    el.className = freshness.level === "fresh" ? "" : freshness.level;
+}
+
+function getCurrentWindowStartIndexBeta(times, hours) {
+    const latestMs = parseApiTimeBeta(times[times.length - 1]).getTime();
+    const windowStartMs = latestMs - hours * 3600000;
+
+    return times.findIndex(time => parseApiTimeBeta(time).getTime() > windowStartMs);
+}
+
+function resamplePressureBeta(rawTimes, rawValues) {
+    const intervalMs = resampleIntervalMinutesBeta * 60000;
+    const maxGapMs = maxInterpolationGapMinutesBeta * 60000;
+    const sampleCount = dataWindowHoursBeta * 60 / resampleIntervalMinutesBeta;
+    const rawPoints = rawTimes
+        .map((time, index) => ({
+            timeMs: parseApiTimeBeta(time).getTime(),
+            value: rawValues[index]
+        }))
+        .filter(point => Number.isFinite(point.timeMs) && point.value != null && !Number.isNaN(point.value))
+        .sort((a, b) => a.timeMs - b.timeMs);
+
+    if (rawPoints.length === 0) {
+        throw new Error("The weather service did not return usable pressure readings.");
+    }
+
+    const endTimeMs = rawPoints[rawPoints.length - 1].timeMs;
+    const startTimeMs = endTimeMs - (sampleCount - 1) * intervalMs;
+    const times = [];
+    const values = [];
+    let nextRawIndex = 0;
+
+    for (let sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++) {
+        const sampleTimeMs = startTimeMs + sampleIndex * intervalMs;
+
+        while (nextRawIndex < rawPoints.length && rawPoints[nextRawIndex].timeMs < sampleTimeMs) {
+            nextRawIndex++;
+        }
+
+        const nextPoint = rawPoints[nextRawIndex];
+        const previousPoint = rawPoints[nextRawIndex - 1];
+
+        times.push(sampleTimeMs / 1000);
+
+        if (nextPoint?.timeMs === sampleTimeMs) {
+            values.push(nextPoint.value);
+        } else if (
+            previousPoint &&
+            nextPoint &&
+            nextPoint.timeMs - previousPoint.timeMs <= maxGapMs
+        ) {
+            const fraction = (sampleTimeMs - previousPoint.timeMs) /
+                (nextPoint.timeMs - previousPoint.timeMs);
+            values.push(previousPoint.value + (nextPoint.value - previousPoint.value) * fraction);
+        } else {
+            values.push(null);
+        }
+    }
+
+    return { times, values };
+}
+
+function calculateChangeVectorBeta(values, times, currentStartIndex, hours) {
+    const indexByTimestamp = new Map(
+        times.map((time, index) => [parseApiTimeBeta(time).getTime(), index])
+    );
+
+    return values.slice(currentStartIndex).map((value, index) => {
+        const currentIndex = currentStartIndex + index;
+        const comparisonTimeMs = parseApiTimeBeta(times[currentIndex]).getTime() - hours * 3600000;
+        const comparisonIndex = indexByTimestamp.get(comparisonTimeMs);
+        const previousValue = comparisonIndex === undefined ? null : values[comparisonIndex];
+
+        if (value == null || previousValue == null ||
+            Number.isNaN(value) || Number.isNaN(previousValue)) {
+            return null;
+        }
+
+        return +(value - previousValue).toFixed(4);
+    });
+}
+
+function drawPressureChartBeta(labels, values) {
+    if (pressureChart) pressureChart.destroy();
+
+    pressureChart = new Chart(
+        document.getElementById("pressureChart"),
+        {
+            type: "line",
+            data: {
+                labels,
+                datasets: [{
+                    label: "Pressure (inHg)",
+                    data: values,
+                    pointRadius: 0,
+                    borderWidth: 2,
+                    tension: 0.15,
+                    spanGaps: true
+                }]
+            },
+            options: buildChartOptionsBeta({
+                min: 28.5,
+                max: 30.8,
+                title: {
+                    display: true,
+                    text: "Pressure (inHg)"
+                }
+            })
+        }
+    );
+}
+
+function drawChangeChartBeta(labels, values, hours = 12) {
+    if (changeChart) changeChart.destroy();
+
+    const { yellow, red } = getRiskThresholds(hours);
+    const pointColors = values.map(v => {
+        if (v === null || Number.isNaN(v)) return "rgba(0,0,0,0)";
+
+        const abs = Math.abs(v);
+        if (abs >= red) return "#d9534f";
+        if (abs >= yellow) return "#f0ad4e";
+        return "#5cb85c";
+    });
+
+    changeChart = new Chart(
+        document.getElementById("changeChart"),
+        {
+            type: "line",
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: `${hours}-Hour Change`,
+                        data: values,
+                        pointRadius: 0,
+                        borderWidth: 2,
+                        tension: 0.15,
+                        spanGaps: true
+                    },
+                    {
+                        label: "Risk Level",
+                        data: values,
+                        showLine: false,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        backgroundColor: pointColors,
+                        borderWidth: 0
+                    }
+                ]
+            },
+            options: buildChartOptionsBeta({
+                min: -0.5,
+                max: 0.5,
+                title: {
+                    display: true,
+                    text: "Δ inHg"
+                }
+            })
+        }
+    );
+}
+
+function renderChartsBeta() {
+    const lastObservedIndex = getLatestObservedIndexBeta(cachedTimes);
+
+    if (lastObservedIndex < 0) {
+        throw new Error("The weather service returned no readings at or before the current time.");
+    }
+
+    const observedPressure = cachedPressure.slice(0, lastObservedIndex + 1);
+    const observedTimes = cachedTimes.slice(0, lastObservedIndex + 1);
+    const { times: pressureTimes, values: pressureWindow } =
+        resamplePressureBeta(observedTimes, observedPressure);
+
+    const changeStartIndex = getCurrentWindowStartIndexBeta(pressureTimes, currentWindowHoursBeta);
+    if (changeStartIndex < 0) {
+        throw new Error("The weather service did not return a complete current comparison window.");
+    }
+
+    const changeWindow = calculateChangeVectorBeta(
+        pressureWindow,
+        pressureTimes,
+        changeStartIndex,
+        currentDeltaHours
+    );
+    const changeTimes = pressureTimes.slice(changeStartIndex);
+    const displayedPressure = pressureWindow.slice(changeStartIndex);
+    const displayedPressureTimes = pressureTimes.slice(changeStartIndex);
+
+    let latestChange = 0;
+    for (let i = changeWindow.length - 1; i >= 0; i--) {
+        if (changeWindow[i] !== null && !Number.isNaN(changeWindow[i])) {
+            latestChange = changeWindow[i];
+            break;
+        }
+    }
+
+    setBackground(getSeverity(latestChange, currentDeltaHours));
+    updateTimeLabelsBeta(displayedPressureTimes, changeTimes, currentDeltaHours);
+    drawPressureChartBeta(displayedPressureTimes, displayedPressure);
+    drawChangeChartBeta(changeTimes, changeWindow, currentDeltaHours);
+}
+
 window.addEventListener("load", () => {
     document.body.style.backgroundColor = "#9ef79e";
+    document.getElementById("location").value = "";
     updateLocationLabel();
 
     document.getElementById("location").addEventListener("keydown", e => {
-        if (e.key === "Enter") searchLocation();
+        if (e.key === "Enter") searchLocationBeta();
     });
 
     loadData();
